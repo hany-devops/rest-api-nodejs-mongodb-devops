@@ -1,0 +1,60 @@
+name: CI
+
+# Run on every push to main and on every pull request
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Lint and test the code
+  test:
+    runs-on: ubuntu-latest
+
+    # Containers started next to the job (same idea as our compose services)
+    services:
+      mongo:
+        image: mongo:6
+        ports:
+          - 27017:27017
+      maildev:
+        image: maildev/maildev
+        ports:
+          - 1025:1025
+
+    # Config the app expects (there is no .env on GitHub)
+    env:
+      MONGODB_URL: mongodb://localhost:27017/test
+      JWT_SECRET: ci-test-secret
+      JWT_TIMEOUT_DURATION: 2h
+      EMAIL_SMTP_HOST: localhost
+      EMAIL_SMTP_PORT: "1025"
+      EMAIL_SMTP_SECURE: "false"
+      EMAIL_SMTP_USERNAME: ci
+      EMAIL_SMTP_PASSWORD: ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Non-blocking: 5 pre-existing no-unused-vars errors in the original code
+      - name: Lint
+        run: npx eslint --config .eslintrc.json "**/*.js"
+        continue-on-error: true
+
+      - name: Test
+        run: npm test
+
+  # Build the Docker image only if tests passed
+  build-image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t myapi:ci .
