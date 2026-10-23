@@ -1,0 +1,30 @@
+name: CD
+
+# Run only on push to main (not on pull requests)
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Connect to the VM via SSH and run the deploy commands
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /root/myproject
+
+            # Pull the latest code from GitHub
+            git pull origin main
+
+            # Rebuild the image and restart only changed containers
+            docker compose up -d --build
+
+            # Show running containers (visible in the Actions log)
+            docker compose ps
