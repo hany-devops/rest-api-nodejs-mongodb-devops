@@ -12,16 +12,16 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
-          cd /root/myproject
+          cd /home/runner/myproject
           git fetch origin main
           git reset --hard origin/main
 
       - name: Rebuild and restart containers
         run: |
-          cd /root/myproject
+          cd /home/runner/myproject
           docker compose up -d --build
 
       - name: Verify deployment
         run: |
-          cd /root/myproject
+          cd /home/runner/myproject
           docker compose ps
